@@ -44,11 +44,81 @@ printresult(6, k6)
 
 #Elbow/knee
 library(ggplot2)
-sses <- c(k2$tot.withinss, k3$tot.withinss, k4$tot.withinss, k5$tot.withinss, 
+sse <- c(k2$tot.withinss, k3$tot.withinss, k4$tot.withinss, k5$tot.withinss, 
          k6$tot.withinss)
-x <- 2:6
-elb <- data.frame(x, sses)
-ggplot(elb, aes(x=x, y=sses)) + geom_line()
+k <- 2:6
+elb <- data.frame(k, sse)
+ggplot(elb, aes(x=k, y=sse)) + geom_line() +ggtitle("Elbow/Knee")
 ggsave("elbow.png")
 
+#Based on the output, k=3 seems to be an adequate K-value, since the decrease
+#in SSE drops sharply at first but "evens out" at the "elbow" of k=3.
+
+
+#3.3: Bisecting K-means
+bisect_km <- function(k, clusters, sses, means=NULL){
+  #find cluster with highest sse
+  high = 0
+  ind = 0
+  for(i in 1:length(clusters)){
+    if (sses[i] > high){
+      ind = i
+      high = sses[i]
+    }
+  }
+  #set current cluster for bisection to highest sse cluster
+  data = clusters[ind]
+  
+  #3 trials
+  t1 = kmeans(data, 2)
+  t2 = kmeans(data, 2)
+  t3 = kmeans(data, 2)
+  #determine ideal trial
+  kept = t1
+  if(t1$tot.withinss > t2$tot.withinss){
+    if(t2$tot.withinss > t3$tot.withinss){
+      kept = t3
+    }
+    else {
+      kept = t2
+    }
+  }
+  else{
+    if(t1$tot.withinss > t3$tot.withinss){
+      kept = t3
+    }
+    else {
+      kept = t1
+    }
+  }
+  #for identified ideal trial, split the data into the 2 clusters
+  an <- which(kept$cluster == 1)
+  bn <- which(kept$cluster == 2)
+  a <- data[-bn]
+  b <- data[-an]
+  #update sse vector
+  sses[ind] = kept$withinss[1]
+  sses.append(kept$withinss[2])
+  #update cluster set
+  clusters[ind] = a
+  clusters.append(b)
+  
+  if(k > 1){
+    bisect_km(k-1, clusters, sses, kmres)
+  }
+  else{
+    cat("K =", k, "\n")
+    #Total SSE for all clusters
+    cat("Total SSE:", sum(sses), "\n")
+    for (i in 1:k) {
+      cat("Cluster", i, "\n")
+      cat("SSE:", sses[i], "\n")
+    }
+  }
+}
+
+cluster = list(df)
+sses = list(0)
+
+bisect_km(k, cluster, sses)
 
